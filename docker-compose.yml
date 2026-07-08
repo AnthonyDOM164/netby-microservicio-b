@@ -1,0 +1,12 @@
+services:
+  microservicio-b:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: microservicio-b-riesgos
+    ports:
+      - "9000:9000" # gRPC Port
+      - "8081:8081" # HTTP Port
+    environment:
+      - GRPC_PORT=9000
+    restart: unless-stopped
