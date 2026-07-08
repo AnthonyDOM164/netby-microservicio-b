@@ -10,8 +10,14 @@ servicios gRPC consumidos por `netby-microservicio-a`:
 
 ## Estado en nube
 
-El servicio esta desplegado como backend interno del ecosistema. El puerto gRPC
-no se consume desde el navegador; lo usa el microservicio A.
+El servicio esta desplegado y expone su puerto gRPC para pruebas tecnicas:
+
+```txt
+217.216.55.37:9000
+```
+
+Importante: este servicio no es REST y no se consume con una URL `http://`.
+Se prueba como gRPC usando Postman, grpcurl u otra herramienta compatible.
 
 API publica que orquesta este servicio:
 
@@ -92,26 +98,65 @@ docker compose down
 
 ## Pruebas manuales con grpcurl
 
-Listar servicios:
+El servidor no requiere TLS para la prueba. Como gRPC reflection no esta
+habilitado, se debe usar el archivo protobuf del repositorio:
 
 ```bash
-grpcurl -plaintext localhost:9000 list
+src/main/proto/riesgos.proto
 ```
 
 Consultar score:
 
 ```bash
 grpcurl -plaintext \
+  -import-path src/main/proto \
+  -proto riesgos.proto \
   -d '{"cedula":"0102030405"}' \
-  localhost:9000 riesgos.ScoreRiesgo/ObtenerScore
+  217.216.55.37:9000 riesgos.ScoreRiesgo/ObtenerScore
 ```
 
 Consultar deudas:
 
 ```bash
 grpcurl -plaintext \
+  -import-path src/main/proto \
+  -proto riesgos.proto \
   -d '{"cedula":"0102030405"}' \
-  localhost:9000 riesgos.DeudasRiesgo/ObtenerDeudas
+  217.216.55.37:9000 riesgos.DeudasRiesgo/ObtenerDeudas
+```
+
+## Pruebas con Postman
+
+Postman permite crear requests gRPC:
+
+1. Abrir Postman y crear un request de tipo `gRPC`.
+2. Usar como servidor:
+
+```txt
+217.216.55.37:9000
+```
+
+3. Desactivar TLS o seleccionar conexion `plaintext`.
+4. Importar el contrato:
+
+```txt
+src/main/proto/riesgos.proto
+```
+
+5. Probar el metodo `riesgos.ScoreRiesgo/ObtenerScore` con:
+
+```json
+{
+  "cedula": "0102030405"
+}
+```
+
+6. Probar el metodo `riesgos.DeudasRiesgo/ObtenerDeudas` con:
+
+```json
+{
+  "cedula": "0102030405"
+}
 ```
 
 ## Comportamiento esperado
