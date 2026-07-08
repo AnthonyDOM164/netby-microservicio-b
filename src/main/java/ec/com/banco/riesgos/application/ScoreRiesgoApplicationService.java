@@ -12,7 +12,7 @@ import java.time.Duration;
 @ApplicationScoped
 public class ScoreRiesgoApplicationService {
 
-    public static final Duration DELAY_SCORE = Duration.ofMillis(1_500);
+    public static final Duration DELAY_SCORE = Duration.ofSeconds(2);
 
     private final ScoreRiesgoGenerator generator;
 

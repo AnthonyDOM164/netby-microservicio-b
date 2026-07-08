@@ -1,69 +1,134 @@
-# netby-microservicio-b
+# Netby Microservicio B - Riesgos Mock
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+Microservicio Quarkus que simula un proveedor interno de riesgos. Expone dos
+servicios gRPC consumidos por `netby-microservicio-a`:
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+- `ScoreRiesgo.ObtenerScore`: devuelve un score aleatorio entre `0` y `100`
+  para una cedula, con `2s` de latencia simulada.
+- `DeudasRiesgo.ObtenerDeudas`: devuelve deudas/mensualidades aleatorias para
+  una cedula, con `1.5s` de latencia simulada.
 
-## Running the application in dev mode
+## Estado en nube
 
-You can run your application in dev mode that enables live coding using:
+El servicio esta desplegado como backend interno del ecosistema. El puerto gRPC
+no se consume desde el navegador; lo usa el microservicio A.
 
-```shell script
+API publica que orquesta este servicio:
+
+```txt
+http://217.216.55.37:8080
+```
+
+## Decision REST vs gRPC
+
+Para la comunicacion A -> B se usa gRPC en lugar de REST porque ambos servicios
+son internos, tienen contratos definidos por protobuf y realizan llamadas
+sincronas punto a punto. Esto reduce ambiguedad del contrato, facilita clientes
+tipados y deja REST solamente para el borde publico frontend -> A.
+
+Contrato protobuf:
+
+```txt
+src/main/proto/riesgos.proto
+```
+
+## Arquitectura
+
+El proyecto esta organizado por capas:
+
+- `bancoaustro/model`: modelos de dominio del riesgo mock.
+- `bancoaustro/service`: generadores de score y deudas aleatorias.
+- `application`: casos de uso con latencia simulada.
+- `infrastructure/grpc`: servicios gRPC e interceptores.
+
+## Requisitos
+
+- Java 21.
+- Docker y Docker Compose opcionales.
+- Maven Wrapper incluido en el repositorio.
+- `grpcurl` opcional para pruebas manuales gRPC.
+
+Si `./mvnw` no ejecuta en Linux/macOS, corregir una sola vez:
+
+```bash
+chmod +x mvnw
+```
+
+## Puertos
+
+| Puerto | Uso |
+| --- | --- |
+| `9000` | gRPC |
+| `8081` | HTTP interno de Quarkus |
+
+## Ejecucion local
+
+```bash
 ./mvnw quarkus:dev
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+El servicio gRPC queda disponible en:
 
-## Packaging and running the application
-
-The application can be packaged using:
-
-```shell script
-./mvnw package
+```txt
+localhost:9000
 ```
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+## Ejecucion con Docker Compose
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
-
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
+```bash
+docker compose up -d --build
 ```
 
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
+Servicios por defecto:
 
-## Creating a native executable
+- gRPC: `localhost:9000`
+- HTTP Quarkus: `http://localhost:8081`
 
-You can create a native executable using:
+Para detener:
 
-```shell script
-./mvnw package -Dnative
+```bash
+docker compose down
 ```
 
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
+## Pruebas manuales con grpcurl
 
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
+Listar servicios:
+
+```bash
+grpcurl -plaintext localhost:9000 list
 ```
 
-You can then execute your native executable with: `./target/netby-microservicio-b-1.0-SNAPSHOT-runner`
+Consultar score:
 
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
+```bash
+grpcurl -plaintext \
+  -d '{"cedula":"0102030405"}' \
+  localhost:9000 riesgos.ScoreRiesgo/ObtenerScore
+```
 
-## Related Guides
+Consultar deudas:
 
-- Mutiny ([guide](https://quarkus.io/guides/mutiny-primer)): Write reactive applications with the modern Reactive
-  Programming library Mutiny
-- SmallRye Fault Tolerance ([guide](https://quarkus.io/guides/smallrye-fault-tolerance)): Build fault-tolerant network
-  services
+```bash
+grpcurl -plaintext \
+  -d '{"cedula":"0102030405"}' \
+  localhost:9000 riesgos.DeudasRiesgo/ObtenerDeudas
+```
 
-## Provided Code
+## Comportamiento esperado
 
-### gRPC
+- El score es aleatorio entre `0` y `100`.
+- La lista de deudas contiene instituciones y montos aleatorios.
+- `ObtenerScore` simula `2s` de latencia.
+- `ObtenerDeudas` simula `1.5s` de latencia.
 
-Create your first gRPC service
+## Build
 
-[Related guide section...](https://quarkus.io/guides/grpc-getting-started)
+```bash
+./mvnw -DskipTests package
+```
+
+El artefacto queda en:
+
+```txt
+target/quarkus-app/quarkus-run.jar
+```
