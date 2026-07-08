@@ -1,4 +1,4 @@
-FROM maven:3.9.11-eclipse-temurin-21 AS build
+FROM eclipse-temurin-21-jre-jammy AS build
 WORKDIR /workspace
 COPY pom.xml .
 COPY src ./src
